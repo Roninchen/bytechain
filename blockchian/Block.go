@@ -1,11 +1,11 @@
 package blockchian
 
 import (
+	"time"
+	"fmt"
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"log"
-	"time"
 )
 
 type Block struct {
@@ -19,11 +19,14 @@ type Block struct {
 	Timestamp int64
 	//5. Hash
 	Hash []byte
-	// Nonce
+	// 6. Nonce
 	Nonce int64
 }
+
+
 // 将区块序列化成字节数组
 func (block *Block) Serialize() []byte {
+
 	var result bytes.Buffer
 
 	encoder := gob.NewEncoder(&result)
@@ -51,17 +54,16 @@ func DeserializeBlock(blockBytes []byte) *Block {
 }
 
 
-
-//1. new block
+//1. 创建新的区块
 func NewBlock(data string,height int64,prevBlockHash []byte) *Block {
 
-	//block
+	//创建区块
 	block := &Block{height,prevBlockHash,[]byte(data),time.Now().Unix(),nil,0}
 
-	// pow return hash nonce
-	pow :=NewProofOfWork(block)
+	// 调用工作量证明的方法并且返回有效的Hash和Nonce
+	pow := NewProofOfWork(block)
 
-	//000000
+	// 挖矿验证
 	hash,nonce := pow.Run()
 
 	block.Hash = hash[:]
@@ -73,7 +75,11 @@ func NewBlock(data string,height int64,prevBlockHash []byte) *Block {
 
 }
 
-// 2. create genesis block
-func CreateGenesisBlock(data string) *Block{
-	return NewBlock(data,1,[]byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
+//2. 单独写一个方法，生成创世区块
+
+func CreateGenesisBlock(data string) *Block {
+
+
+	return NewBlock(data,1, []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 }
+

@@ -1,6 +1,7 @@
 package blockchian
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -33,6 +34,8 @@ func NewBlock(data string,height int64,prevBlockHash []byte) *Block {
 
 	block.Hash = hash[:]
 	block.Nonce = nonce
+
+	fmt.Println()
 
 	return block
 

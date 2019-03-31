@@ -51,6 +51,16 @@ func (proofOfWork *ProofOfWork) Run()([]byte,int64) {
 	return hash[:],int64(nonce)
 }
 
+func (proofOfWork *ProofOfWork) IsValid() bool{
+	//1.proofOfWork.Block.Hash
+	//2.proofOfWork.Target
+	var hashInt big.Int
+	hashInt.SetBytes(proofOfWork.Block.Hash)
+	if proofOfWork.target.Cmp(&hashInt) == 1{
+		return true
+	}
+	return false
+}
 // 数据拼接，返回字节数组
 func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
@@ -67,5 +77,6 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 
 	return data
 }
+
 
 

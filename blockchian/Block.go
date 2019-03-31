@@ -1,7 +1,10 @@
 package blockchian
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -19,6 +22,35 @@ type Block struct {
 	// Nonce
 	Nonce int64
 }
+// 将区块序列化成字节数组
+func (block *Block) Serialize() []byte {
+	var result bytes.Buffer
+
+	encoder := gob.NewEncoder(&result)
+
+	err := encoder.Encode(block)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return result.Bytes()
+}
+
+// 反序列化
+func DeserializeBlock(blockBytes []byte) *Block {
+
+	var block Block
+
+	decoder := gob.NewDecoder(bytes.NewReader(blockBytes))
+	err := decoder.Decode(&block)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return &block
+}
+
+
 
 //1. new block
 func NewBlock(data string,height int64,prevBlockHash []byte) *Block {

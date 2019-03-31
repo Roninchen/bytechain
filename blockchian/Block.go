@@ -49,15 +49,20 @@ func (block *Block) SetHash()  {
 	block.Hash = hash[:]
 
 }
-//1. 创建新的区块
+//1. new block
 func NewBlock(data string,height int64,prevBlockHash []byte) *Block {
 
-	//创建区块
+	//block
 	block := &Block{height,prevBlockHash,[]byte(data),time.Now().Unix(),nil}
 
-	//设置Hash
+	//set Hash
 	block.SetHash()
 
 	return block
 
+}
+
+// 2. create genesis block
+func CreateGenesisBlock(data string) *Block{
+	return NewBlock(data,1,[]byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 }

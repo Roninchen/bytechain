@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-	block := blockchian.NewBlock("Genenis Block",1,[]byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
-
-	fmt.Println(block)
+	genesisBlock := blockchian.CreateGenesisBlock("创世区块")
+	fmt.Println(genesisBlock)
 }

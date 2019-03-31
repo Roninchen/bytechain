@@ -1,10 +1,6 @@
 package blockchian
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -19,44 +15,24 @@ type Block struct {
 	Timestamp int64
 	//5. Hash
 	Hash []byte
+	// Nonce
+	Nonce int64
 }
 
-func (block *Block) SetHash()  {
-
-	//	1. Height []byte
-
-	heightBytes := IntToHex(block.Height)
-
-	fmt.Println(heightBytes)
-
-	//  2. 将时间戳转[]byte
-
-	// 2 ~ 36
-	// 1528097970
-	timeString := strconv.FormatInt(block.Timestamp,2)
-
-	fmt.Println(timeString)
-	timeBytes := []byte(timeString)
-
-	fmt.Println(timeBytes)
-
-	//  3. 拼接所有属性
-	blockBytes := bytes.Join([][]byte{heightBytes,block.PrevBlockHash,block.Data,timeBytes},[]byte{})
-
-	// 4. 生成Hash
-	hash := sha256.Sum256(blockBytes)
-
-	block.Hash = hash[:]
-
-}
 //1. new block
 func NewBlock(data string,height int64,prevBlockHash []byte) *Block {
 
 	//block
-	block := &Block{height,prevBlockHash,[]byte(data),time.Now().Unix(),nil}
+	block := &Block{height,prevBlockHash,[]byte(data),time.Now().Unix(),nil,0}
 
-	//set Hash
-	block.SetHash()
+	// pow return hash nonce
+	pow :=NewProofOfWork(block)
+
+	//000000
+	hash,nonce := pow.Run()
+
+	block.Hash = hash[:]
+	block.Nonce = nonce
 
 	return block
 

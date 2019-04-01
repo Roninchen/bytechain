@@ -43,13 +43,13 @@ func (blc *Blockchain) Printchain() {
 
 	for {
 		block := blockchainIterator.Next()
-
-		fmt.Printf("Height：%d\n", block.Height)
-		fmt.Printf("PrevBlockHash：%x\n", block.PrevBlockHash)
-		fmt.Printf("Data：%s\n", block.Data)
-		fmt.Printf("Timestamp：%s\n", time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
-		fmt.Printf("Hash：%x\n", block.Hash)
-		fmt.Printf("Nonce：%d\n", block.Nonce)
+		fmt.Println("👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚")
+		fmt.Printf("⛳  Height️: %-80d|\n", block.Height)
+		fmt.Printf("⬆️  PrevBlockHash：%-73x|\n", block.PrevBlockHash)
+		fmt.Printf("📁  Data：%-82s|\n", block.Data)
+		fmt.Printf("⏰  Timestamp：%-77s|\n", time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
+		fmt.Printf("🔖  Hash：%-82x|\n", block.Hash)
+		fmt.Printf("🔢  Nonce：%-81d|\n", block.Nonce)
 
 		fmt.Println()
 

@@ -1,12 +1,12 @@
 package blockchian
 
 import (
-	"crypto/sha256"
 	"time"
 	"fmt"
 	"bytes"
 	"encoding/gob"
 	"log"
+	"crypto/sha256"
 )
 
 type Block struct {
@@ -24,6 +24,7 @@ type Block struct {
 	Nonce int64
 }
 
+
 // 需要将Txs转换成[]byte
 func (block *Block) HashTransactions() []byte  {
 
@@ -39,6 +40,7 @@ func (block *Block) HashTransactions() []byte  {
 	return txHash[:]
 
 }
+
 
 // 将区块序列化成字节数组
 func (block *Block) Serialize() []byte {

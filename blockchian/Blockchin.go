@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 	"os"
+	"strconv"
+	"encoding/hex"
 )
 
 // 数据库名字
@@ -126,6 +128,9 @@ func (blc *Blockchain) AddBlockToBlockchain(txs []*Transaction) {
 
 
 
+
+
+
 //1. 创建带有创世区块的区块链
 func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 
@@ -215,17 +220,135 @@ func BlockchainObject() *Blockchain {
 }
 
 
+// 如果一个地址对应的TXOutput未花费，那么这个Transaction就应该添加到数组中返回
+func (blockchain *Blockchain) UnUTXOs(address string) []*TXOutput {
+
+	var unUTXOs []*TXOutput
+
+	spentTXOutputs := make(map[string][]int)
+
+
+	//{hash:[0]}
+
+	blockIterator := blockchain.Iterator()
+
+
+	for  {
+
+		block := blockIterator.Next()
+
+		fmt.Println(block)
+		fmt.Println()
+
+		for _,tx := range block.Txs {
+
+			// txHash
+			// Vins
+			if tx.IsCoinbaseTransaction() == false {
+				for _,in := range tx.Vins {
+					//是否能够解锁
+					if in.UnLockWithAddress(address) {
+
+						key := hex.EncodeToString(in.TxHash)
+
+						spentTXOutputs[key] = append(spentTXOutputs[key],in.Vout)
+					}
+
+				}
+			}
+
+
+			// Vouts
+			for index,out := range tx.Vouts {
+
+				if out.UnLockScriptPubKeyWithAddress(address) {
+
+					fmt.Println(out)
+					fmt.Println(spentTXOutputs)
+
+					//&{2 zhangqiang}
+					//map[]
+
+					if spentTXOutputs != nil {
+
+						//map[cea12d33b2e7083221bf3401764fb661fd6c34fab50f5460e77628c42ca0e92b:[0]]
+
+						if len(spentTXOutputs) != 0 {
+							for txHash,indexArray := range spentTXOutputs {
+
+
+								for _,i := range  indexArray {
+									if index == i && txHash == hex.EncodeToString(tx.TxHash){
+										continue
+									} else {
+										unUTXOs = append(unUTXOs,out)
+									}
+								}
+
+
+							}
+						} else {
+							unUTXOs = append(unUTXOs,out)
+						}
+
+					}
+				}
+
+			}
+
+		}
+
+
+		fmt.Println(spentTXOutputs)
+
+		var hashInt big.Int
+		hashInt.SetBytes(block.PrevBlockHash)
+
+		// Cmp compares x and y and returns:
+		//
+		//   -1 if x <  y
+		//    0 if x == y
+		//   +1 if x >  y
+		if hashInt.Cmp(big.NewInt(0)) == 0 {
+			break;
+		}
+
+	}
+
+
+	return unUTXOs
+}
+
+
+
+
+
 // 挖掘新的区块
 func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []string) {
+
+	//	$ ./bc send -from '["juncheng"]' -to '["zhangqiang"]' -amount '["2"]'
+	//	[juncheng]
+	//	[zhangqiang]
+	//	[2]
+
+
+
+	//1.建立一笔交易
 
 	fmt.Println(from)
 	fmt.Println(to)
 	fmt.Println(amount)
 
+	value ,_ := strconv.Atoi(amount[0])
+
+	tx := NewSimpleTransaction(from[0],to[0],value)
+	fmt.Println(tx)
+
+
 	//1. 通过相关算法建立Transaction数组
 
 	var txs []*Transaction
-
+	txs = append(txs,tx)
 
 	var block *Block
 
@@ -267,3 +390,17 @@ func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []st
 
 }
 
+// 查询余额
+func (blockchain *Blockchain) GetBalance(address string) int64 {
+
+	utxos := blockchain.UnUTXOs(address)
+
+	var amount int64
+
+	for _,out := range utxos {
+
+		amount = amount + out.Value
+	}
+
+	return amount
+}

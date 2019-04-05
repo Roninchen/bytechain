@@ -11,7 +11,7 @@ import (
 //0000 0000 0000 0000 1001 0001 0000 .... 0001
 
 // 256位Hash里面前面至少要有16个零
-const targetBit  = 16
+const targetBit  = 20
 
 
 
@@ -25,7 +25,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			pow.Block.PrevBlockHash,
-			pow.Block.Data,
+			pow.Block.HashTransactions(),
 			IntToHex(pow.Block.Timestamp),
 			IntToHex(int64(targetBit)),
 			IntToHex(int64(nonce)),

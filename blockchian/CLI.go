@@ -13,8 +13,8 @@ type CLI struct {}
 func printUsage()  {
 
 	fmt.Println("Usage:")
-	fmt.Println("\tcreateblockchain -data -- 交易数据.")
-	fmt.Println("\taddblock -data DATA -- 交易数据.")
+	fmt.Println("\tcreateblockchain -address -- 交易数据.")
+	fmt.Println("\tsend -from FROM -to TO -amount AMOUNT -- 交易明细")
 	fmt.Println("\tprintchain -- 输出区块信息.")
 
 }
@@ -26,7 +26,7 @@ func isValidArgs()  {
 	}
 }
 
-func (cli *CLI) addBlock(data string)  {
+func (cli *CLI) addBlock(txs []*Transaction)  {
 
 	if DBExists() == false {
 		fmt.Println("数据不存在.......")
@@ -37,7 +37,7 @@ func (cli *CLI) addBlock(data string)  {
 
 	defer blockchain.DB.Close()
 
-	blockchain.AddBlockToBlockchain(data)
+	blockchain.AddBlockToBlockchain(txs)
 }
 
 func (cli *CLI) printchain()  {
@@ -54,10 +54,22 @@ func (cli *CLI) printchain()  {
 	blockchain.Printchain()
 
 }
+// 创建创世区块
+func (cli *CLI) createGenesisBlockchain(address string)  {
 
-func (cli *CLI) createGenesisBlockchain(data string)  {
+	blockchain := CreateBlockchainWithGenesisBlock(address)
+	blockchain.DB.Close()
+}
+// 转账
+func (cli *CLI)send(from []string,to []string,amount []string)  {
+	if DBExists() == false {
+		fmt.Println("数据不存在......")
+		os.Exit(1)
+	}
+	blockchain := BlockchainObject()
+	defer blockchain.DB.Close()
 
-	CreateBlockchainWithGenesisBlock(data)
+	blockchain.MineNewBlock(from,to,amount)
 }
 
 
@@ -65,18 +77,22 @@ func (cli *CLI) Run()  {
 
 	isValidArgs()
 
-	addBlockCmd := flag.NewFlagSet("addblock",flag.ExitOnError)
+	sendBlockCmd := flag.NewFlagSet("send",flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain",flag.ExitOnError)
 	createBlockchainCmd := flag.NewFlagSet("createblockchain",flag.ExitOnError)
 
-	flagAddBlockData := addBlockCmd.String("data","http://liyuechun.org","交易数据......")
+	flagFrom := sendBlockCmd.String("from","","转账源地址......")
+	flagTo := sendBlockCmd.String("to","","转账目的地地址......")
+	flagAmout := sendBlockCmd.String("amount","","转账金额......")
 
-	flagCreateBlockchainWithData := createBlockchainCmd.String("data","Genesis block data......","创世区块交易数据......")
+
+
+	flagCreateBlockchainWithAddress := createBlockchainCmd.String("address","","创世区块的地址")
 
 
 	switch os.Args[1] {
-	case "addblock":
-		err := addBlockCmd.Parse(os.Args[2:])
+	case "send":
+		err := sendBlockCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -95,14 +111,19 @@ func (cli *CLI) Run()  {
 		os.Exit(1)
 	}
 
-	if addBlockCmd.Parsed() {
-		if *flagAddBlockData == "" {
+	if sendBlockCmd.Parsed() {
+		if *flagFrom == "" || *flagTo == "" || *flagAmout =="" {
 			printUsage()
 			os.Exit(1)
 		}
 
-		//fmt.Println(*flagAddBlockData)
-		cli.addBlock(*flagAddBlockData)
+		from := JSONToArray(*flagFrom)
+		to := JSONToArray(*flagTo)
+		amount := JSONToArray(*flagAmout)
+
+		cli.send(from,to,amount)
+
+		//cli.addBlock([]*Transaction{})
 	}
 
 	if printChainCmd.Parsed() {
@@ -113,13 +134,13 @@ func (cli *CLI) Run()  {
 
 	if createBlockchainCmd.Parsed() {
 
-		if *flagCreateBlockchainWithData == "" {
-			fmt.Println("交易数据不能为空......")
+		if *flagCreateBlockchainWithAddress == "" {
+			fmt.Println("地址不能为空")
 			printUsage()
 			os.Exit(1)
 		}
 
-		cli.createGenesisBlockchain(*flagCreateBlockchainWithData)
+		cli.createGenesisBlockchain(*flagCreateBlockchainWithAddress)
 	}
 
 }

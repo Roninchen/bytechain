@@ -43,15 +43,31 @@ func (blc *Blockchain) Printchain() {
 
 	for {
 		block := blockchainIterator.Next()
-		fmt.Println("👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚  👉  🌚")
-		fmt.Printf("⛳  Height️: %-80d|\n", block.Height)
-		fmt.Printf("⬆️  PrevBlockHash：%-73x|\n", block.PrevBlockHash)
-		fmt.Printf("📁  Data：%-82s|\n", block.Data)
-		fmt.Printf("⏰  Timestamp：%-77s|\n", time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
-		fmt.Printf("🔖  Hash：%-82x|\n", block.Hash)
-		fmt.Printf("🔢  Nonce：%-81d|\n", block.Nonce)
 
-		fmt.Println()
+		fmt.Printf("Height：%d\n", block.Height)
+		fmt.Printf("PrevBlockHash：%x\n", block.PrevBlockHash)
+		fmt.Printf("Timestamp：%s\n", time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
+		fmt.Printf("Hash：%x\n", block.Hash)
+		fmt.Printf("Nonce：%d\n", block.Nonce)
+		fmt.Println("Txs:")
+		for _,tx := range block.Txs {
+
+			fmt.Printf("%x\n",tx.TxHash)
+			fmt.Println("Vins:")
+			for _,in := range tx.Vins  {
+				fmt.Printf("%x\n",in.TxHash)
+				fmt.Printf("%d\n",in.Vout)
+				fmt.Printf("%s\n",in.ScriptSig)
+			}
+
+			fmt.Println("Vouts:")
+			for _,out := range tx.Vouts  {
+				fmt.Println(out.Value)
+				fmt.Println(out.ScriptPubKey)
+			}
+		}
+
+		fmt.Println("------------------------------")
 
 		var hashInt big.Int
 		hashInt.SetBytes(block.PrevBlockHash)
@@ -70,7 +86,7 @@ func (blc *Blockchain) Printchain() {
 }
 
 //// 增加区块到区块链里面
-func (blc *Blockchain) AddBlockToBlockchain(data string) {
+func (blc *Blockchain) AddBlockToBlockchain(txs []*Transaction) {
 
 	err := blc.DB.Update(func(tx *bolt.Tx) error {
 
@@ -85,7 +101,7 @@ func (blc *Blockchain) AddBlockToBlockchain(data string) {
 			block := DeserializeBlock(blockBytes)
 
 			//3. 将区块序列化并且存储到数据库中
-			newBlock := NewBlock(data, block.Height+1, block.Hash)
+			newBlock := NewBlock(txs, block.Height+1, block.Hash)
 			err := b.Put(newBlock.Hash, newBlock.Serialize())
 			if err != nil {
 				log.Panic(err)
@@ -107,8 +123,11 @@ func (blc *Blockchain) AddBlockToBlockchain(data string) {
 	}
 }
 
+
+
+
 //1. 创建带有创世区块的区块链
-func CreateBlockchainWithGenesisBlock(data string) {
+func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 
 	// 判断数据库是否存在
 	if DBExists() {
@@ -125,6 +144,10 @@ func CreateBlockchainWithGenesisBlock(data string) {
 		log.Fatal(err)
 	}
 
+
+	var genesisHash []byte
+
+	// 关闭数据库
 	err = db.Update(func(tx *bolt.Tx) error {
 
 		// 创建数据库表
@@ -136,7 +159,10 @@ func CreateBlockchainWithGenesisBlock(data string) {
 
 		if b != nil {
 			// 创建创世区块
-			genesisBlock := CreateGenesisBlock(data)
+			// 创建了一个coinbase Transaction
+			txCoinbase := NewCoinbaseTransaction(address)
+
+			genesisBlock := CreateGenesisBlock([]*Transaction{txCoinbase})
 			// 将创世区块存储到表中
 			err := b.Put(genesisBlock.Hash, genesisBlock.Serialize())
 			if err != nil {
@@ -148,10 +174,15 @@ func CreateBlockchainWithGenesisBlock(data string) {
 			if err != nil {
 				log.Panic(err)
 			}
+
+			genesisHash = genesisBlock.Hash
 		}
 
 		return nil
 	})
+
+
+	return &Blockchain{genesisHash,db}
 
 }
 
@@ -182,3 +213,57 @@ func BlockchainObject() *Blockchain {
 
 	return &Blockchain{tip,db}
 }
+
+
+// 挖掘新的区块
+func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []string) {
+
+	fmt.Println(from)
+	fmt.Println(to)
+	fmt.Println(amount)
+
+	//1. 通过相关算法建立Transaction数组
+
+	var txs []*Transaction
+
+
+	var block *Block
+
+	blockchain.DB.View(func(tx *bolt.Tx) error{
+
+		b := tx.Bucket([]byte(blockTableName))
+		if b != nil {
+
+			hash := b.Get([]byte("l"))
+
+			blockBytes := b.Get(hash)
+
+			block = DeserializeBlock(blockBytes)
+
+		}
+
+		return nil
+	})
+
+
+	//2. 建立新的区块
+	block = NewBlock(txs,block.Height+1,block.Hash)
+
+	//将新区块存储到数据库
+	blockchain.DB.Update(func(tx *bolt.Tx) error{
+		b := tx.Bucket([]byte(blockTableName))
+		if b != nil {
+
+			b.Put(block.Hash,block.Serialize())
+
+			b.Put([]byte("l"),block.Hash)
+
+			blockchain.Tip = block.Hash
+
+		}
+		return nil
+	})
+
+
+}
+

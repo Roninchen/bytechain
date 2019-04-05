@@ -221,9 +221,9 @@ func BlockchainObject() *Blockchain {
 
 
 // 如果一个地址对应的TXOutput未花费，那么这个Transaction就应该添加到数组中返回
-func (blockchain *Blockchain) UnUTXOs(address string) []*TXOutput {
+func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 
-	var unUTXOs []*TXOutput
+	var unUTXOs []*UTXO
 
 	spentTXOutputs := make(map[string][]int)
 
@@ -281,14 +281,16 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*TXOutput {
 									if index == i && txHash == hex.EncodeToString(tx.TxHash){
 										continue
 									} else {
-										unUTXOs = append(unUTXOs,out)
+										utxo := &UTXO{tx.TxHash,index,out}
+										unUTXOs = append(unUTXOs,utxo)
 									}
 								}
 
 
 							}
 						} else {
-							unUTXOs = append(unUTXOs,out)
+							utxo := &UTXO{tx.TxHash,index,out}
+							unUTXOs = append(unUTXOs,utxo)
 						}
 
 					}
@@ -397,10 +399,12 @@ func (blockchain *Blockchain) GetBalance(address string) int64 {
 
 	var amount int64
 
-	for _,out := range utxos {
+	for _,utxo := range utxos {
 
-		amount = amount + out.Value
+		amount = amount + utxo.Output.Value
 	}
 
 	return amount
 }
+
+

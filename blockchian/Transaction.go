@@ -5,6 +5,7 @@ import (
 	"log"
 	"encoding/gob"
 	"crypto/sha256"
+	"encoding/hex"
 )
 
 // UTXO
@@ -68,54 +69,45 @@ func (tx *Transaction) HashTransaction()  {
 
 //2. 转账时产生的Transaction
 
-func NewSimpleTransaction(from string,to string,amount int) *Transaction {
+func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchain) *Transaction {
 
 	//$ ./bc send -from '["juncheng"]' -to '["zhangqiang"]' -amount '["2"]'
 	//	[juncheng]
 	//	[zhangqiang]
 	//	[2]
 
-	//1. 有一个函数，返回from这个人所有的未花费交易输出所对应的Transaction
+	// 通过一个函数，返回
+	money,spendableUTXODic := blockchain.FindSpendableUTXOS(from,amount)
+	//
+	//	{hash1:[0],hash2:[2,3]}
 
-	//unSpentTx := UnSpentTransationsWithAdress(from)
-	//
-	//fmt.Println(unSpentTx)
+	var txIntputs []*TXInput
+	var txOutputs []*TXOutput
 
+	for txHash,indexArray := range spendableUTXODic  {
 
-	//// 通过一个函数，返回
-	////money,dic :=
-	////
-	////	{hash1:[0,2],hash2:[1,4]}
-	//
-	//var txIntputs []*TXInput
-	//var txOutputs []*TXOutput
-	//
-	////代表消费
-	//bytes ,_ := hex.DecodeString("1b5032e0cf4851f84dd89b9154912c082e28d5aa7f141625a0641c8a74f61802")
-	//txInput := &TXInput{bytes,0,from}
-	//
-	////fmt.Printf("s:%s\n",s)
-	//
-	//// 消费
-	//txIntputs = append(txIntputs,txInput)
-	//
-	//
-	//// 转账
-	//txOutput := &TXOutput{int64(amount),to}
-	//txOutputs = append(txOutputs,txOutput)
-	//
-	//// 找零
-	//txOutput = &TXOutput{4 - int64(amount),from}
-	//txOutputs = append(txOutputs,txOutput)
-	//
-	//tx := &Transaction{[]byte{},txIntputs,txOutputs}
-	//
-	////设置hash值
-	//tx.HashTransaction()
+		txHashBytes,_ := hex.DecodeString(txHash)
+		for _,index := range indexArray  {
+			txInput := &TXInput{txHashBytes,index,from}
+			txIntputs = append(txIntputs,txInput)
+		}
 
+	}
 
+	// 转账
+	txOutput := &TXOutput{int64(amount),to}
+	txOutputs = append(txOutputs,txOutput)
 
-	return nil
+	// 找零
+	txOutput = &TXOutput{int64(money) - int64(amount),from}
+	txOutputs = append(txOutputs,txOutput)
+
+	tx := &Transaction{[]byte{},txIntputs,txOutputs}
+
+	//设置hash值
+	tx.HashTransaction()
+
+	return tx
 
 }
 

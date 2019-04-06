@@ -52,18 +52,18 @@ func (blc *Blockchain) Printchain() {
 		fmt.Printf("Hash：%x\n", block.Hash)
 		fmt.Printf("Nonce：%d\n", block.Nonce)
 		fmt.Println("Txs:")
-		for _,tx := range block.Txs {
+		for _, tx := range block.Txs {
 
-			fmt.Printf("%x\n",tx.TxHash)
+			fmt.Printf("%x\n", tx.TxHash)
 			fmt.Println("Vins:")
-			for _,in := range tx.Vins  {
-				fmt.Printf("%x\n",in.TxHash)
-				fmt.Printf("%d\n",in.Vout)
-				fmt.Printf("%s\n",in.ScriptSig)
+			for _, in := range tx.Vins {
+				fmt.Printf("%x\n", in.TxHash)
+				fmt.Printf("%d\n", in.Vout)
+				fmt.Printf("%s\n", in.ScriptSig)
 			}
 
 			fmt.Println("Vouts:")
-			for _,out := range tx.Vouts  {
+			for _, out := range tx.Vouts {
 				fmt.Println(out.Value)
 				fmt.Println(out.ScriptPubKey)
 			}
@@ -125,12 +125,6 @@ func (blc *Blockchain) AddBlockToBlockchain(txs []*Transaction) {
 	}
 }
 
-
-
-
-
-
-
 //1. 创建带有创世区块的区块链
 func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 
@@ -140,7 +134,6 @@ func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 		os.Exit(1)
 	}
 
-
 	fmt.Println("正在创建创世区块.......")
 
 	// 创建或者打开数据库
@@ -148,7 +141,6 @@ func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 
 	var genesisHash []byte
 
@@ -186,11 +178,9 @@ func CreateBlockchainWithGenesisBlock(address string) *Blockchain {
 		return nil
 	})
 
-
-	return &Blockchain{genesisHash,db}
+	return &Blockchain{genesisHash, db}
 
 }
-
 
 // 返回Blockchain对象
 func BlockchainObject() *Blockchain {
@@ -212,13 +202,11 @@ func BlockchainObject() *Blockchain {
 
 		}
 
-
 		return nil
 	})
 
-	return &Blockchain{tip,db}
+	return &Blockchain{tip, db}
 }
-
 
 // 如果一个地址对应的TXOutput未花费，那么这个Transaction就应该添加到数组中返回
 func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
@@ -227,39 +215,38 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 
 	spentTXOutputs := make(map[string][]int)
 
-
 	//{hash:[0]}
 
 	blockIterator := blockchain.Iterator()
 
-
-	for  {
+	for {
 
 		block := blockIterator.Next()
 
 		fmt.Println(block)
 		fmt.Println()
 
-		for _,tx := range block.Txs {
+		for _, tx := range block.Txs {
 
 			// txHash
 			// Vins
 			if tx.IsCoinbaseTransaction() == false {
-				for _,in := range tx.Vins {
+				for _, in := range tx.Vins {
 					//是否能够解锁
 					if in.UnLockWithAddress(address) {
 
 						key := hex.EncodeToString(in.TxHash)
 
-						spentTXOutputs[key] = append(spentTXOutputs[key],in.Vout)
+						spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
 					}
 
 				}
 			}
 
-
 			// Vouts
-			for index,out := range tx.Vouts {
+
+		work:
+			for index, out := range tx.Vouts {
 
 				if out.UnLockScriptPubKeyWithAddress(address) {
 
@@ -274,23 +261,28 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 						//map[cea12d33b2e7083221bf3401764fb661fd6c34fab50f5460e77628c42ca0e92b:[0]]
 
 						if len(spentTXOutputs) != 0 {
-							for txHash,indexArray := range spentTXOutputs {
 
+							var isSpentUTXO bool
 
-								for _,i := range  indexArray {
-									if index == i && txHash == hex.EncodeToString(tx.TxHash){
-										continue
-									} else {
-										utxo := &UTXO{tx.TxHash,index,out}
-										unUTXOs = append(unUTXOs,utxo)
+							for txHash, indexArray := range spentTXOutputs {
+
+								for _, i := range indexArray {
+									if index == i && txHash == hex.EncodeToString(tx.TxHash) {
+										isSpentUTXO = true
+										continue work
 									}
 								}
+							}
 
+							if isSpentUTXO == false {
+
+								utxo := &UTXO{tx.TxHash, index, out}
+								unUTXOs = append(unUTXOs, utxo)
 
 							}
 						} else {
-							utxo := &UTXO{tx.TxHash,index,out}
-							unUTXOs = append(unUTXOs,utxo)
+							utxo := &UTXO{tx.TxHash, index, out}
+							unUTXOs = append(unUTXOs, utxo)
 						}
 
 					}
@@ -299,7 +291,6 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 			}
 
 		}
-
 
 		fmt.Println(spentTXOutputs)
 
@@ -317,23 +308,50 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 
 	}
 
-
 	return unUTXOs
 }
 
+// 转账时查找可用的UTXO
+func (blockchain *Blockchain) FindSpendableUTXOS(from string, amount int) (int64, map[string][]int) {
 
+	//1. 现获取所有的UTXO
 
+	utxos := blockchain.UnUTXOs(from)
 
+	spendableUTXO := make(map[string][]int)
+
+	//2. 遍历utxos
+
+	var value int64
+
+	for _, utxo := range utxos {
+
+		value = value + utxo.Output.Value
+
+		hash := hex.EncodeToString(utxo.TxHash)
+		spendableUTXO[hash] = append(spendableUTXO[hash], utxo.Index)
+
+		if value >= int64(amount) {
+			break
+		}
+	}
+
+	if value < int64(amount) {
+
+		fmt.Printf("%s's fund is 不足\n", from)
+		os.Exit(1)
+	}
+
+	return value, spendableUTXO
+}
 
 // 挖掘新的区块
-func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []string) {
+func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []string) {
 
 	//	$ ./bc send -from '["juncheng"]' -to '["zhangqiang"]' -amount '["2"]'
 	//	[juncheng]
 	//	[zhangqiang]
 	//	[2]
-
-
 
 	//1.建立一笔交易
 
@@ -341,20 +359,19 @@ func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []st
 	fmt.Println(to)
 	fmt.Println(amount)
 
-	value ,_ := strconv.Atoi(amount[0])
+	value, _ := strconv.Atoi(amount[0])
 
-	tx := NewSimpleTransaction(from[0],to[0],value)
+	tx := NewSimpleTransaction(from[0], to[0], value, blockchain)
 	fmt.Println(tx)
-
 
 	//1. 通过相关算法建立Transaction数组
 
 	var txs []*Transaction
-	txs = append(txs,tx)
+	txs = append(txs, tx)
 
 	var block *Block
 
-	blockchain.DB.View(func(tx *bolt.Tx) error{
+	blockchain.DB.View(func(tx *bolt.Tx) error {
 
 		b := tx.Bucket([]byte(blockTableName))
 		if b != nil {
@@ -370,25 +387,23 @@ func (blockchain *Blockchain) MineNewBlock(from []string,to []string,amount []st
 		return nil
 	})
 
-
 	//2. 建立新的区块
-	block = NewBlock(txs,block.Height+1,block.Hash)
+	block = NewBlock(txs, block.Height+1, block.Hash)
 
 	//将新区块存储到数据库
-	blockchain.DB.Update(func(tx *bolt.Tx) error{
+	blockchain.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blockTableName))
 		if b != nil {
 
-			b.Put(block.Hash,block.Serialize())
+			b.Put(block.Hash, block.Serialize())
 
-			b.Put([]byte("l"),block.Hash)
+			b.Put([]byte("l"), block.Hash)
 
 			blockchain.Tip = block.Hash
 
 		}
 		return nil
 	})
-
 
 }
 
@@ -399,12 +414,10 @@ func (blockchain *Blockchain) GetBalance(address string) int64 {
 
 	var amount int64
 
-	for _,utxo := range utxos {
+	for _, utxo := range utxos {
 
 		amount = amount + utxo.Output.Value
 	}
 
 	return amount
 }
-
-

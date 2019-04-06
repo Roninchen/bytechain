@@ -69,7 +69,7 @@ func (tx *Transaction) HashTransaction()  {
 
 //2. 转账时产生的Transaction
 
-func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchain) *Transaction {
+func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchain,txs []*Transaction) *Transaction {
 
 	//$ ./bc send -from '["juncheng"]' -to '["zhangqiang"]' -amount '["2"]'
 	//	[juncheng]
@@ -77,7 +77,7 @@ func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchai
 	//	[2]
 
 	// 通过一个函数，返回
-	money,spendableUTXODic := blockchain.FindSpendableUTXOS(from,amount)
+	money,spendableUTXODic := blockchain.FindSpendableUTXOS(from,amount,txs)
 	//
 	//	{hash1:[0],hash2:[2,3]}
 

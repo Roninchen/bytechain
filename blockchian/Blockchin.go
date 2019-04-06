@@ -38,53 +38,45 @@ func DBExists() bool {
 }
 
 // 遍历输出所有区块的信息
-func (blc *Blockchain) Printchain() {
+func (blc *Blockchain) Printchain()  {
 
-	fmt.Println("PrintchainPrintchainPrintchainPrintchain")
-	blockchainIterator := blc.Iterator()
+	blcIterator := blc.Iterator()
 
-	for {
-		block := blockchainIterator.Next()
+	for  {
 
-		fmt.Printf("Height：%d\n", block.Height)
-		fmt.Printf("PrevBlockHash：%x\n", block.PrevBlockHash)
-		fmt.Printf("Timestamp：%s\n", time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
-		fmt.Printf("Hash：%x\n", block.Hash)
-		fmt.Printf("Nonce：%d\n", block.Nonce)
-		fmt.Println("Txs:")
-		for _, tx := range block.Txs {
+		block := blcIterator.Next()
 
-			fmt.Printf("%x\n", tx.TxHash)
-			fmt.Println("Vins:")
-			for _, in := range tx.Vins {
-				fmt.Printf("%x\n", in.TxHash)
-				fmt.Printf("%d\n", in.Vout)
-				fmt.Printf("%s\n", in.ScriptSig)
+		fmt.Printf("Height：%d\n",block.Height)
+		fmt.Printf("PrevBlockHash：%x\n",block.PrevBlockHash)
+		fmt.Printf("Timestamp：%s\n",time.Unix(block.Timestamp, 0).Format("2006-01-02 03:04:05 PM"))
+		fmt.Printf("Hash：%x\n",block.Hash)
+		fmt.Printf("Nonce：%d\n",block.Nonce)
+		fmt.Println("-----------------------")
+		for _,tx := range block.Txs {
+			fmt.Println("当前交易的Hash")
+			fmt.Println(hex.EncodeToString(tx.TxHash))
+			fmt.Println("已花费的TXOuput的相关记录")
+			for _,in := range tx.Vins {
+				fmt.Printf("TxHash:%s\tVout:%d\tScriptSig:%s\n",hex.EncodeToString(in.TxHash),in.Vout,in.ScriptSig)
+			}
+			fmt.Println("Vout: - TXOutput")
+			for _,out := range tx.Vouts{
+				fmt.Printf("Value: %d\tScriptPubKey:%s\n",out.Value,out.ScriptPubKey)
 			}
 
-			fmt.Println("Vouts:")
-			for _, out := range tx.Vouts {
-				fmt.Println(out.Value)
-				fmt.Println(out.ScriptPubKey)
-			}
 		}
 
-		fmt.Println("------------------------------")
+
+		fmt.Println("-----------------------\n")
 
 		var hashInt big.Int
 		hashInt.SetBytes(block.PrevBlockHash)
 
-		// Cmp compares x and y and returns:
-		//
-		//   -1 if x <  y
-		//    0 if x == y
-		//   +1 if x >  y
-
 		if big.NewInt(0).Cmp(&hashInt) == 0 {
 			break;
 		}
-	}
 
+	}
 }
 
 //// 增加区块到区块链里面
@@ -209,13 +201,80 @@ func BlockchainObject() *Blockchain {
 }
 
 // 如果一个地址对应的TXOutput未花费，那么这个Transaction就应该添加到数组中返回
-func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
+func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO {
+
+
 
 	var unUTXOs []*UTXO
 
 	spentTXOutputs := make(map[string][]int)
 
 	//{hash:[0]}
+
+	for _,tx := range txs {
+
+		if tx.IsCoinbaseTransaction() == false {
+			for _, in := range tx.Vins {
+				//是否能够解锁
+				if in.UnLockWithAddress(address) {
+
+					key := hex.EncodeToString(in.TxHash)
+
+					spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
+				}
+
+			}
+		}
+	}
+
+
+	for _,tx := range txs {
+
+	Work1:
+		for index,out := range tx.Vouts {
+
+			if out.UnLockScriptPubKeyWithAddress(address) {
+
+
+				if len(spentTXOutputs) == 0 {
+					utxo := &UTXO{tx.TxHash, index, out}
+					unUTXOs = append(unUTXOs, utxo)
+				} else {
+					for hash,indexArray := range spentTXOutputs {
+
+						txHashStr := hex.EncodeToString(tx.TxHash)
+
+						if hash == txHashStr {
+
+							var isUnSpentUTXO bool
+
+							for _,outIndex := range indexArray {
+
+								if index == outIndex {
+									isUnSpentUTXO = true
+									continue Work1
+								}
+
+								if isUnSpentUTXO == false {
+									utxo := &UTXO{tx.TxHash, index, out}
+									unUTXOs = append(unUTXOs, utxo)
+								}
+							}
+						} else {
+							utxo := &UTXO{tx.TxHash, index, out}
+							unUTXOs = append(unUTXOs, utxo)
+						}
+					}
+				}
+
+			}
+
+		}
+
+	}
+
+
+
 
 	blockIterator := blockchain.Iterator()
 
@@ -226,8 +285,9 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 		fmt.Println(block)
 		fmt.Println()
 
-		for _, tx := range block.Txs {
+		for i := len(block.Txs) - 1; i >= 0 ; i-- {
 
+			tx := block.Txs[i]
 			// txHash
 			// Vins
 			if tx.IsCoinbaseTransaction() == false {
@@ -312,11 +372,11 @@ func (blockchain *Blockchain) UnUTXOs(address string) []*UTXO {
 }
 
 // 转账时查找可用的UTXO
-func (blockchain *Blockchain) FindSpendableUTXOS(from string, amount int) (int64, map[string][]int) {
+func (blockchain *Blockchain) FindSpendableUTXOS(from string, amount int,txs []*Transaction) (int64, map[string][]int) {
 
 	//1. 现获取所有的UTXO
 
-	utxos := blockchain.UnUTXOs(from)
+	utxos := blockchain.UnUTXOs(from,txs)
 
 	spendableUTXO := make(map[string][]int)
 
@@ -359,16 +419,18 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 	fmt.Println(to)
 	fmt.Println(amount)
 
-	value, _ := strconv.Atoi(amount[0])
-
-	tx := NewSimpleTransaction(from[0], to[0], value, blockchain)
-	fmt.Println(tx)
-
-	//1. 通过相关算法建立Transaction数组
 
 	var txs []*Transaction
-	txs = append(txs, tx)
 
+	for index,address := range from {
+		value, _ := strconv.Atoi(amount[index])
+		tx := NewSimpleTransaction(address, to[index], value, blockchain,txs)
+		txs = append(txs, tx)
+		//fmt.Println(tx)
+	}
+
+
+	//1. 通过相关算法建立Transaction数组
 	var block *Block
 
 	blockchain.DB.View(func(tx *bolt.Tx) error {
@@ -410,7 +472,7 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 // 查询余额
 func (blockchain *Blockchain) GetBalance(address string) int64 {
 
-	utxos := blockchain.UnUTXOs(address)
+	utxos := blockchain.UnUTXOs(address,[]*Transaction{})
 
 	var amount int64
 

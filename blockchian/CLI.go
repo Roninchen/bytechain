@@ -9,6 +9,7 @@ import (
 
 type CLI struct {}
 
+
 func printUsage()  {
 
 	fmt.Println("Usage:")
@@ -16,6 +17,7 @@ func printUsage()  {
 	fmt.Println("\tsend -from FROM -to TO -amount AMOUNT -- 交易明细.")
 	fmt.Println("\tprintchain -- 输出区块信息.")
 	fmt.Println("\tgetbalance -address -- 输出区块信息.")
+
 }
 
 func isValidArgs()  {
@@ -24,6 +26,8 @@ func isValidArgs()  {
 		os.Exit(1)
 	}
 }
+
+
 
 func (cli *CLI) Run()  {
 
@@ -112,4 +116,5 @@ func (cli *CLI) Run()  {
 
 		cli.getBalance(*getbalanceWithAdress)
 	}
+
 }

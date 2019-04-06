@@ -17,4 +17,5 @@ func (cli *CLI) printchain()  {
 	defer blockchain.DB.Close()
 
 	blockchain.Printchain()
+
 }

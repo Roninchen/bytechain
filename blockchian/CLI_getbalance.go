@@ -13,4 +13,6 @@ func (cli *CLI) getBalance(address string)  {
 	amount := blockchain.GetBalance(address)
 
 	fmt.Printf("%s一共有%d个Token\n",address,amount)
+
+
 }

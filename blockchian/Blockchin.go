@@ -435,10 +435,6 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 
 	//1.建立一笔交易
 
-	fmt.Println(from)
-	fmt.Println(to)
-	fmt.Println(amount)
-
 
 	var txs []*Transaction
 
@@ -448,6 +444,10 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 		txs = append(txs, tx)
 		//fmt.Println(tx)
 	}
+
+	//奖励
+	tx := NewCoinbaseTransaction(from[0])
+	txs = append(txs,tx)
 
 
 	//1. 通过相关算法建立Transaction数组

@@ -247,7 +247,10 @@ func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO
 		for index,out := range tx.Vouts {
 
 			if out.UnLockScriptPubKeyWithAddress(address) {
+				fmt.Println("看看是否是俊诚...")
+				fmt.Println(address)
 
+				fmt.Println(spentTXOutputs)
 
 				if len(spentTXOutputs) == 0 {
 					utxo := &UTXO{tx.TxHash, index, out}
@@ -432,9 +435,9 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 
 	//1.建立一笔交易
 
-	//fmt.Println(from)
-	//fmt.Println(to)
-	//fmt.Println(amount)
+	fmt.Println(from)
+	fmt.Println(to)
+	fmt.Println(amount)
 
 
 	var txs []*Transaction
@@ -466,6 +469,15 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 		return nil
 	})
 
+
+	// 在建立新区块之前对txs进行签名验证
+
+	for _,tx := range txs  {
+
+		if blockchain.VerifyTransaction(tx) != true {
+			log.Panic("ERROR: Invalid transaction")
+		}
+	}
 
 
 	//2. 建立新的区块
@@ -547,4 +559,22 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
 	}
 
 	return Transaction{},nil
+}
+
+
+// 验证数字签名
+func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
+
+
+	prevTXs := make(map[string]Transaction)
+
+	for _, vin := range tx.Vins {
+		prevTX, err := bc.FindTransaction(vin.TxHash)
+		if err != nil {
+			log.Panic(err)
+		}
+		prevTXs[hex.EncodeToString(prevTX.TxHash)] = prevTX
+	}
+
+	return tx.Verify(prevTXs)
 }

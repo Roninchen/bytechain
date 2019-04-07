@@ -9,6 +9,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 
+	"math/big"
+	"crypto/elliptic"
 )
 
 // UTXO
@@ -200,3 +202,50 @@ func (tx *Transaction) TrimmedCopy() Transaction {
 	return txCopy
 }
 
+
+// 数字签名验证
+
+func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
+	if tx.IsCoinbaseTransaction() {
+		return true
+	}
+
+	for _, vin := range tx.Vins {
+		if prevTXs[hex.EncodeToString(vin.TxHash)].TxHash == nil {
+			log.Panic("ERROR: Previous transaction is not correct")
+		}
+	}
+
+	txCopy := tx.TrimmedCopy()
+
+	curve := elliptic.P256()
+
+	for inID, vin := range tx.Vins {
+		prevTx := prevTXs[hex.EncodeToString(vin.TxHash)]
+		txCopy.Vins[inID].Signature = nil
+		txCopy.Vins[inID].PublicKey = prevTx.Vouts[vin.Vout].Ripemd160Hash
+		txCopy.TxHash = txCopy.Hash()
+		txCopy.Vins[inID].PublicKey = nil
+
+
+		// 私钥 ID
+		r := big.Int{}
+		s := big.Int{}
+		sigLen := len(vin.Signature)
+		r.SetBytes(vin.Signature[:(sigLen / 2)])
+		s.SetBytes(vin.Signature[(sigLen / 2):])
+
+		x := big.Int{}
+		y := big.Int{}
+		keyLen := len(vin.PublicKey)
+		x.SetBytes(vin.PublicKey[:(keyLen / 2)])
+		y.SetBytes(vin.PublicKey[(keyLen / 2):])
+
+		rawPubKey := ecdsa.PublicKey{curve, &x, &y}
+		if ecdsa.Verify(&rawPubKey, txCopy.TxHash, &r, &s) == false {
+			return false
+		}
+	}
+
+	return true
+}

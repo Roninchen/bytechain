@@ -20,6 +20,7 @@ func printUsage()  {
 	fmt.Println("\tsend -from FROM -to TO -amount AMOUNT -- 交易明细.")
 	fmt.Println("\tprintchain -- 输出区块信息.")
 	fmt.Println("\tgetbalance -address -- 输出区块信息.")
+	fmt.Println("\ttest -- 测试.")
 
 }
 
@@ -37,6 +38,7 @@ func (cli *CLI) Run()  {
 	isValidArgs()
 
 
+	testCmd := flag.NewFlagSet("test",flag.ExitOnError)
 	addresslistsCmd := flag.NewFlagSet("addresslists",flag.ExitOnError)
 	createWalletCmd := flag.NewFlagSet("createwallet",flag.ExitOnError)
 	sendBlockCmd := flag.NewFlagSet("send",flag.ExitOnError)
@@ -58,6 +60,11 @@ func (cli *CLI) Run()  {
 	switch os.Args[1] {
 	case "send":
 		err := sendBlockCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
+	case "test":
+		err := testCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -118,6 +125,12 @@ func (cli *CLI) Run()  {
 
 		//fmt.Println("输出所有区块的数据........")
 		cli.printchain()
+	}
+
+	if testCmd.Parsed() {
+
+		fmt.Println("测试....")
+		cli.TestMethod()
 	}
 
 	if addresslistsCmd.Parsed() {

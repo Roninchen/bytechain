@@ -12,8 +12,9 @@ import (
 
 // 256位Hash里面前面至少要有16个零
 const targetBit  = 20
+//20
 
-
+//64
 
 type ProofOfWork struct {
 	Block *Block // 当前要验证的区块

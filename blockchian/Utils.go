@@ -3,11 +3,11 @@ package blockchian
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"log"
+	"encoding/json"
 )
 
-// int64 to []byte
+// 将int64转换为字节数组
 func IntToHex(num int64) []byte {
 	buff := new(bytes.Buffer)
 	err := binary.Write(buff, binary.BigEndian, num)
@@ -17,6 +17,7 @@ func IntToHex(num int64) []byte {
 
 	return buff.Bytes()
 }
+
 
 // 标准的JSON字符串转数组
 func JSONToArray(jsonString string) []string {
@@ -28,6 +29,8 @@ func JSONToArray(jsonString string) []string {
 	}
 	return sArr
 }
+
+
 
 // 字节数组反转
 func ReverseBytes(data []byte) {

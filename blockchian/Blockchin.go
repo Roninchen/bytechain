@@ -61,13 +61,15 @@ func (blc *Blockchain) Printchain() {
 			for _, in := range tx.Vins {
 				fmt.Printf("%x\n", in.TxHash)
 				fmt.Printf("%d\n", in.Vout)
-				fmt.Printf("%s\n", in.PublicKey)
+				fmt.Printf("%x\n", in.PublicKey)
 			}
 
 			fmt.Println("Vouts:")
 			for _, out := range tx.Vouts {
-				fmt.Println(out.Value)
-				fmt.Println(out.Ripemd160Hash)
+				//fmt.Println(out.Value)
+				fmt.Printf("%d\n",out.Value)
+				//fmt.Println(out.Ripemd160Hash)
+				fmt.Printf("%x\n",out.Ripemd160Hash)
 			}
 		}
 
@@ -290,8 +292,6 @@ func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO
 	}
 
 
-
-
 	blockIterator := blockchain.Iterator()
 
 	for {
@@ -436,11 +436,13 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 	//1.建立一笔交易
 
 
+	utxoSet := &UTXOSet{blockchain}
+
 	var txs []*Transaction
 
 	for index,address := range from {
 		value, _ := strconv.Atoi(amount[index])
-		tx := NewSimpleTransaction(address, to[index], value, blockchain,txs)
+		tx := NewSimpleTransaction(address, to[index], int64(value), utxoSet,txs)
 		txs = append(txs, tx)
 		//fmt.Println(tx)
 	}
@@ -472,11 +474,15 @@ func (blockchain *Blockchain) MineNewBlock(from []string, to []string, amount []
 
 	// 在建立新区块之前对txs进行签名验证
 
+	_txs := []*Transaction{}
+
 	for _,tx := range txs  {
 
-		if blockchain.VerifyTransaction(tx) != true {
+		if blockchain.VerifyTransaction(tx,_txs) != true {
 			log.Panic("ERROR: Invalid transaction")
 		}
+
+		_txs = append(_txs,tx)
 	}
 
 
@@ -515,7 +521,7 @@ func (blockchain *Blockchain) GetBalance(address string) int64 {
 	return amount
 }
 
-func (bclockchain *Blockchain) SignTransaction(tx *Transaction,privKey ecdsa.PrivateKey)  {
+func (bclockchain *Blockchain) SignTransaction(tx *Transaction,privKey ecdsa.PrivateKey,txs []*Transaction)  {
 
 	if tx.IsCoinbaseTransaction() {
 		return
@@ -524,7 +530,7 @@ func (bclockchain *Blockchain) SignTransaction(tx *Transaction,privKey ecdsa.Pri
 	prevTXs := make(map[string]Transaction)
 
 	for _, vin := range tx.Vins {
-		prevTX, err := bclockchain.FindTransaction(vin.TxHash)
+		prevTX, err := bclockchain.FindTransaction(vin.TxHash,txs)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -536,7 +542,15 @@ func (bclockchain *Blockchain) SignTransaction(tx *Transaction,privKey ecdsa.Pri
 }
 
 
-func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
+func (bc *Blockchain) FindTransaction(ID []byte,txs []*Transaction) (Transaction, error) {
+
+
+	for _,tx := range txs  {
+		if bytes.Compare(tx.TxHash, ID) == 0 {
+			return *tx, nil
+		}
+	}
+
 
 	bci := bc.Iterator()
 
@@ -563,13 +577,13 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
 
 
 // 验证数字签名
-func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
+func (bc *Blockchain) VerifyTransaction(tx *Transaction,txs []*Transaction) bool {
 
 
 	prevTXs := make(map[string]Transaction)
 
 	for _, vin := range tx.Vins {
-		prevTX, err := bc.FindTransaction(vin.TxHash)
+		prevTX, err := bc.FindTransaction(vin.TxHash,txs)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -577,4 +591,105 @@ func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
 	}
 
 	return tx.Verify(prevTXs)
+}
+
+
+// [string]*TXOutputs
+func (blc *Blockchain) FindUTXOMap() map[string]*TXOutputs  {
+
+	blcIterator := blc.Iterator()
+
+	// 存储已花费的UTXO的信息
+	spentableUTXOsMap := make(map[string][]*TXInput)
+
+
+	utxoMaps := make(map[string]*TXOutputs)
+
+
+	for {
+		block := blcIterator.Next()
+
+
+		for i := len(block.Txs) - 1; i >= 0 ;i-- {
+
+			txOutputs := &TXOutputs{[]*UTXO{}}
+
+			tx := block.Txs[i]
+
+
+			// coinbase
+			if tx.IsCoinbaseTransaction() == false {
+				for _,txInput := range tx.Vins {
+
+					txHash := hex.EncodeToString(txInput.TxHash)
+					spentableUTXOsMap[txHash] = append(spentableUTXOsMap[txHash],txInput)
+
+				}
+			}
+
+
+
+			txHash := hex.EncodeToString(tx.TxHash)
+
+		WorkOutLoop:
+			for index,out := range tx.Vouts  {
+
+				if tx.IsCoinbaseTransaction() {
+
+					fmt.Println("IsCoinbaseTransaction")
+					fmt.Println(out)
+					fmt.Println(txHash)
+				}
+
+				txInputs := spentableUTXOsMap[txHash]
+
+				if len(txInputs) > 0 {
+
+					isSpent := false
+
+					for _,in := range  txInputs {
+
+						outPublicKey := out.Ripemd160Hash
+						inPublicKey := in.PublicKey
+
+						if bytes.Compare(outPublicKey,Ripemd160Hash(inPublicKey)) == 0{
+							if index == in.Vout {
+								isSpent = true
+								continue WorkOutLoop
+							}
+						}
+
+					}
+
+					if isSpent == false {
+						utxo := &UTXO{tx.TxHash,index,out}
+						txOutputs.UTXOS = append(txOutputs.UTXOS,utxo)
+					}
+
+				} else {
+					utxo := &UTXO{tx.TxHash,index,out}
+					txOutputs.UTXOS = append(txOutputs.UTXOS,utxo)
+				}
+
+			}
+
+			// 设置键值对
+			utxoMaps[txHash] = txOutputs
+
+		}
+
+
+		// 找到创世区块时退出
+		var hashInt big.Int
+		hashInt.SetBytes(block.PrevBlockHash)
+
+		if hashInt.Cmp(big.NewInt(0)) == 0 {
+			break;
+		}
+
+
+
+	}
+
+	return utxoMaps
 }

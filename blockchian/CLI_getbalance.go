@@ -10,9 +10,10 @@ func (cli *CLI) getBalance(address string)  {
 	blockchain := BlockchainObject()
 	defer blockchain.DB.Close()
 
-	amount := blockchain.GetBalance(address)
+	utxoSet := &UTXOSet{blockchain}
+
+	amount := utxoSet.GetBalance(address)
 
 	fmt.Printf("%s一共有%d个Token\n",address,amount)
-
 
 }

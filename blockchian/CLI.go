@@ -13,6 +13,9 @@ type CLI struct {}
 func printUsage()  {
 
 	fmt.Println("Usage:")
+
+	fmt.Println("\taddresslists -- 输出所有钱包地址.")
+	fmt.Println("\tcreatewallet -- 创建钱包.")
 	fmt.Println("\tcreateblockchain -address -- 交易数据.")
 	fmt.Println("\tsend -from FROM -to TO -amount AMOUNT -- 交易明细.")
 	fmt.Println("\tprintchain -- 输出区块信息.")
@@ -33,6 +36,9 @@ func (cli *CLI) Run()  {
 
 	isValidArgs()
 
+
+	addresslistsCmd := flag.NewFlagSet("addresslists",flag.ExitOnError)
+	createWalletCmd := flag.NewFlagSet("createwallet",flag.ExitOnError)
 	sendBlockCmd := flag.NewFlagSet("send",flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain",flag.ExitOnError)
 	createBlockchainCmd := flag.NewFlagSet("createblockchain",flag.ExitOnError)
@@ -55,6 +61,11 @@ func (cli *CLI) Run()  {
 		if err != nil {
 			log.Panic(err)
 		}
+	case "addresslists":
+		err := addresslistsCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
 	case "printchain":
 		err := printChainCmd.Parse(os.Args[2:])
 		if err != nil {
@@ -67,6 +78,11 @@ func (cli *CLI) Run()  {
 		}
 	case "getbalance":
 		err := getbalanceCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
+	case "createwallet":
+		err := createWalletCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -85,6 +101,15 @@ func (cli *CLI) Run()  {
 
 		from := JSONToArray(*flagFrom)
 		to := JSONToArray(*flagTo)
+
+		for index,fromAdress := range from {
+			if IsValidForAdress([]byte(fromAdress)) == false || IsValidForAdress([]byte(to[index])) == false {
+				fmt.Printf("地址无效......")
+				printUsage()
+				os.Exit(1)
+			}
+		}
+
 		amount := JSONToArray(*flagAmount)
 		cli.send(from,to,amount)
 	}
@@ -95,21 +120,34 @@ func (cli *CLI) Run()  {
 		cli.printchain()
 	}
 
+	if addresslistsCmd.Parsed() {
+
+		//fmt.Println("输出所有区块的数据........")
+		cli.addressLists()
+	}
+
+
+	if createWalletCmd.Parsed() {
+		// 创建钱包
+		cli.createWallet()
+	}
+
 	if createBlockchainCmd.Parsed() {
 
-		if *flagCreateBlockchainWithAddress == "" {
-			fmt.Println("地址不能为空....")
+		if IsValidForAdress([]byte(*flagCreateBlockchainWithAddress)) == false {
+			fmt.Println("地址无效....")
 			printUsage()
 			os.Exit(1)
 		}
+
 
 		cli.createGenesisBlockchain(*flagCreateBlockchainWithAddress)
 	}
 
 	if getbalanceCmd.Parsed() {
 
-		if *getbalanceWithAdress == "" {
-			fmt.Println("地址不能为空....")
+		if IsValidForAdress([]byte(*getbalanceWithAdress)) == false {
+			fmt.Println("地址无效....")
 			printUsage()
 			os.Exit(1)
 		}

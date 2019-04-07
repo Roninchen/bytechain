@@ -6,7 +6,6 @@ import "bytes"
 //TXOutput{30,"xietingfeng"}
 //TXOutput{40,"zhangbozhi"}
 
-//1PGEsL9ivineUooUpk2uVYm9nGHGkLGDhg
 
 type TXOutput struct {
 	Value int64

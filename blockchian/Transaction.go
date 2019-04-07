@@ -36,9 +36,9 @@ func (tx *Transaction) IsCoinbaseTransaction() bool {
 func NewCoinbaseTransaction(address string) *Transaction {
 
 	//代表消费
-	txInput := &TXInput{[]byte{},-1,"Genesis Data"}
+	txInput := &TXInput{[]byte{},-1,nil,[]byte{}}
 
-	txOutput := &TXOutput{10,address}
+	txOutput := NewTXOutput(10,address)
 
 	txCoinbase := &Transaction{[]byte{},[]*TXInput{txInput},[]*TXOutput{txOutput}}
 
@@ -76,6 +76,9 @@ func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchai
 	//	[zhangqiang]
 	//	[2]
 
+	wallets,_ := NewWallets()
+	wallet := wallets.WalletsMap[from]
+
 	// 通过一个函数，返回
 	money,spendableUTXODic := blockchain.FindSpendableUTXOS(from,amount,txs)
 	//
@@ -88,18 +91,19 @@ func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchai
 
 		txHashBytes,_ := hex.DecodeString(txHash)
 		for _,index := range indexArray  {
-			txInput := &TXInput{txHashBytes,index,from}
+
+			txInput := &TXInput{txHashBytes,index,nil,wallet.PublicKey}
 			txIntputs = append(txIntputs,txInput)
 		}
 
 	}
 
 	// 转账
-	txOutput := &TXOutput{int64(amount),to}
+	txOutput := NewTXOutput(int64(amount),to)
 	txOutputs = append(txOutputs,txOutput)
 
 	// 找零
-	txOutput = &TXOutput{int64(money) - int64(amount),from}
+	txOutput = NewTXOutput(int64(money)-int64(amount),from)
 	txOutputs = append(txOutputs,txOutput)
 
 	tx := &Transaction{[]byte{},txIntputs,txOutputs}

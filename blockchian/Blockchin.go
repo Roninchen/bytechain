@@ -57,11 +57,11 @@ func (blc *Blockchain) Printchain()  {
 			fmt.Println(hex.EncodeToString(tx.TxHash))
 			fmt.Println("已花费的TXOuput的相关记录")
 			for _,in := range tx.Vins {
-				fmt.Printf("TxHash:%s\tVout:%d\tScriptSig:%s\n",hex.EncodeToString(in.TxHash),in.Vout,in.ScriptSig)
+				fmt.Printf("TxHash:%s\tVout:%d\tScriptSig:%s\n",hex.EncodeToString(in.TxHash),in.Vout,in.PublicKey)
 			}
 			fmt.Println("Vout: - TXOutput")
 			for _,out := range tx.Vouts{
-				fmt.Printf("Value: %d\tScriptPubKey:%s\n",out.Value,out.ScriptPubKey)
+				fmt.Printf("Value: %d\tScriptPubKey:%s\n",out.Value,out.Ripemd160Hash)
 			}
 
 		}
@@ -216,7 +216,10 @@ func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO
 		if tx.IsCoinbaseTransaction() == false {
 			for _, in := range tx.Vins {
 				//是否能够解锁
-				if in.UnLockWithAddress(address) {
+				publicKeyHash := Base58Decode([]byte(address))
+
+				ripemd160Hash := publicKeyHash[1:len(publicKeyHash) - 4]
+				if in.UnLockRipemd160Hash(ripemd160Hash) {
 
 					key := hex.EncodeToString(in.TxHash)
 
@@ -293,7 +296,10 @@ func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO
 			if tx.IsCoinbaseTransaction() == false {
 				for _, in := range tx.Vins {
 					//是否能够解锁
-					if in.UnLockWithAddress(address) {
+					publicKeyHash := Base58Decode([]byte(address))
+
+					ripemd160Hash := publicKeyHash[1:len(publicKeyHash) - 4]
+					if in.UnLockRipemd160Hash(ripemd160Hash) {
 
 						key := hex.EncodeToString(in.TxHash)
 

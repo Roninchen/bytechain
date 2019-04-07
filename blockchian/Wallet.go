@@ -26,6 +26,7 @@ type Wallet struct {
 
 func IsValidForAdress(adress []byte) bool {
 
+	// 25
 	version_public_checksumBytes := Base58Decode(adress)
 
 	fmt.Println(version_public_checksumBytes)
@@ -53,13 +54,16 @@ func IsValidForAdress(adress []byte) bool {
 func (w *Wallet) GetAddress() []byte  {
 
 	//1. hash160
+	// 20字节
+	ripemd160Hash := Ripemd160Hash(w.PublicKey)
 
-	ripemd160Hash := w.Ripemd160Hash(w.PublicKey)
-
+	// 21字节
 	version_ripemd160Hash := append([]byte{version},ripemd160Hash...)
 
+	// 两次的256 hash
 	checkSumBytes := CheckSum(version_ripemd160Hash)
 
+	//25
 	bytes := append(version_ripemd160Hash,checkSumBytes...)
 
 	return Base58Encode(bytes)
@@ -75,7 +79,7 @@ func CheckSum(payload []byte) []byte {
 }
 
 
-func (w *Wallet) Ripemd160Hash(publicKey []byte) []byte {
+func Ripemd160Hash(publicKey []byte) []byte {
 
 	//1. 256
 
